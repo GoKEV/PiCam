@@ -1,0 +1,1 @@
+ffmpeg -i video.avi -r 0.5 -f image2 output_%05d.jpg
