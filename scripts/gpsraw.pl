@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 
-open(GPSRAW, "gpscat /dev/ttyACM0|");
+$ttydev = "/dev/ttyACM0";
+
+open(GPSRAW, "cat $ttydev|");
 # This was giving me message types: $GPRMC $GPVTG $GPGGA $GPGSA $GPGSV $GPGLL $GPTXT 
 # but I'm ignoring the rest.  Full list of message types and explanations of fields
 # can be found here: http://aprs.gids.nl/nmea/
@@ -16,13 +18,12 @@ while (<GPSRAW>) {
 	($time,$date,$knots,$mph,$kph,$lat,$latns,$lon,$lonew) = &parse_gprmc($message) if ($msgtype eq "\$GPRMC"); # $GPRMC - Recommended minimum specific GPS/Transit data
 	($mph,$kmph) = &parse_gpvtg($message) if ($msgtype eq "\$GPVTG"); # $GPVTG - Track Made Good and Ground Speed.
 
-	# Print all undefined message types
-	print "$message\n" if (($msgtype ne "\$GPGGA") and ($msgtype ne "\$GPGLL") and ($msgtype ne "\$GPGSA") and ($msgtype ne "\$GPGSV") and ($msgtype ne "\$GPRMC") and ($msgtype ne "\$GPVTG") );
-
-	$google_url = &google_url($lat,$latx,$lon,$lonx);
-
-#	next if (! $_);		# skip blank lines
-
+	## If there's not lat an lon info, we blank out some of the vars
+	if ( ($lat) and ($latx) and ($lon) and ($lonx)){
+		$google_url = &google_url($lat,$latx,$lon,$lonx);
+	}else{
+		$google_url = "";
+	}
 
 print<<ALLDONE;
 TIME	$time

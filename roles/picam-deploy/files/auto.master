@@ -1,0 +1,4 @@
++auto.master
+
+/picam/mnt /etc/auto.picam --timeout=30 --ghost
+

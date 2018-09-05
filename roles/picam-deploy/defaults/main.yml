@@ -1,0 +1,6 @@
+---
+# defaults file for picam-deploy
+
+install_packages:
+ - perl
+ - 

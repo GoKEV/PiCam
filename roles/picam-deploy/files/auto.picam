@@ -1,0 +1,3 @@
+data		-fstype=ext4,sync,nocheck	:/dev/disk/by-uuid/c748d079-53a5-4936-8195-c4a8082c3b0d
+togo		-fstype=ext4,sync,nocheck	:/dev/disk/by-uuid/3e5e9e61-f552-48b7-b169-a97b7b0d9cec
+32gb		-fstype=ext4,sync,nocheck	:/dev/disk/by-uuid/441b537c-030c-483a-8d84-6e2a17d6af6b
