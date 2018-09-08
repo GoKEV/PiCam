@@ -1,11 +1,25 @@
 #!/usr/bin/perl
 
-$ttydev = "/dev/ttyACM0";
+## Default device is /dev/ttyACM0 but you can pipe in an alternate at runtime as so:
+#  ./gpsraw.pl /dev/MyGPSDeviceHere
+
+if ($ARGV[0]){ $ttydev = $ARGV[0]; }else{ $ttydev = "/dev/ttyACM0"; }
+print "\n\n\n\n\nSTARTING GPS RAW DAEMON, LISTENING ON $ttydev\n\n";
+
+$datadir = "/data";
+
+use DBI;
+$dbuser = "root";
+$dbpass = "";
+$dbname = "gpsdata";
+$dsn = "DBI:mysql:database=$dbname;host=localhost";
+$dbh = DBI->connect($dsn, $dbuser, $dbpass);
 
 open(GPSRAW, "cat $ttydev|");
 # This was giving me message types: $GPRMC $GPVTG $GPGGA $GPGSA $GPGSV $GPGLL $GPTXT 
 # but I'm ignoring the rest.  Full list of message types and explanations of fields
 # can be found here: http://aprs.gids.nl/nmea/
+
 
 while (<GPSRAW>) {
 	($msgtype,undef) = split(/\,/,$_);
@@ -14,7 +28,7 @@ while (<GPSRAW>) {
 
 	($time,$lat,$latx,$lon,$lonx,$fixqa,$satct) = &parse_gpgga($message) if ($msgtype eq "\$GPGGA"); # $GPGGA - Global Positioning System Fix Data
 	($lat,$latx,$lon,$lonx) = &parse_gpgll($message) if ($msgtype eq "\$GPGLL"); # $GPGLL - Geographic Position, Latitude / Longitude and time.
-	($satct,$azi) = &parse_gpgsv($message) if ($msgtype eq "\$GPGSV"); # $GPGSV - GPS Satellites in view
+#	($satct,$azi) = &parse_gpgsv($message) if ($msgtype eq "\$GPGSV"); # $GPGSV - GPS Satellites in view
 	($time,$date,$knots,$mph,$kph,$lat,$latns,$lon,$lonew) = &parse_gprmc($message) if ($msgtype eq "\$GPRMC"); # $GPRMC - Recommended minimum specific GPS/Transit data
 	($mph,$kmph) = &parse_gpvtg($message) if ($msgtype eq "\$GPVTG"); # $GPVTG - Track Made Good and Ground Speed.
 
@@ -25,19 +39,40 @@ while (<GPSRAW>) {
 		$google_url = "";
 	}
 
+	$t_hour = substr($time,0,2);
+	$t_min = substr($time,2,2);
+	$t_sec = substr($time,4,2);
+
+	$d_year = substr($date,4,2);
+	$d_mon = substr($date,2,2);
+	$d_day = substr($date,0,2);
+
+	$disptime = substr($time,0,2) . ":" . substr($time,2,2) . ":" . substr($time,4,2) . " 20" . substr($date,4,2) . "-" . substr($date,2,2) . "-" . substr($date,0,2) . " GMT";
+
+	chomp($epoch = `date +%s`);
+
+system("clear");
 print<<ALLDONE;
-TIME	$time
-DATE	$date
-LAT	$lat $latx
-LON	$lon $lonx
-FIXQA	$fixqa
-SATS	$satct
-KNOTS	$knots
-MPH	$mph
-KMPH	$kmph
-GOOGLE	$google_url
+
+
+	DISP	$disptime
+	TIME	$time
+	DATE	$date
+	LAT	$lat $latx
+	LON	$lon $lonx
+	FIXQA	$fixqa
+	SATS	$satct
+	KNOTS	$knots
+	MPH	$mph
+	KMPH	$kmph
+	GOOGLE	$google_url
 
 ALLDONE
+	select(undef, undef, undef, 0.25);
+
+	&write_dbparams($dbh,"snapshot",$time,$date,"$lat $latx","$lon $lonx",$fixqa,$satct,$knots,$mph,$kmph,$google_url,$epoch);
+
+
 }
 
 close(GPSRAW);
@@ -107,3 +142,23 @@ sub unique_array{
 	return grep { !$seen{$_}++ } @_;
 }
 
+sub write_dbparams{
+	my ($dbh,$table,$time,$date,$lat,$lon,$fixqa,$satct,$knots,$mph,$kmph,$url,$epoch) = (@_);
+
+	my $insert = $dbh->prepare( "
+		INSERT into $table
+		SET `gpstime` = '$time',
+		`gpsdate` = '$date',
+		`latitude` = '$lat', 
+		`longitude` = '$lon', 
+		`fixqa` = '$fixqa', 
+		`satellites` = '$satct', 
+		`knots` = '$knots', 
+		`mph` = '$mph', 
+		`kmph` = '$kmph', 
+		`google_url` = '$url',
+		`epoch` = '$epoch',
+		`nowtime` = now()
+	" );$insert->execute;
+
+}

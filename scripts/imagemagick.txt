@@ -1,0 +1,8 @@
+## create a blank 720p image
+
+convert -size 1280x720 xc:transparent overlay.png
+
+
+   convert -background white -fill black \
+           -strokewidth 2  -stroke blue   -undercolor lightblue \
+           -size 165x70 -gravity center label:Anthony     label_color.gif
